@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+
+<!--
+  COLLABORATORS: Ankush Gupta
+  
+-->
+<html>
+
+<head>
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type" />
+<title>Checkerboard</title>
+
+<!-- Load style sheets -->
+<link rel="stylesheet" type="text/css" href="mainLayout.css" />
+
+<!-- Load any supplemental Javascript libraries here -->
+<script type="text/javascript" src="external_js/jquery-1.9.0.min.js"></script>
+<script type="text/javascript" src="checker.js"></script>
+<script type="text/javascript" src="boardEvent.js"></script>
+<script type="text/javascript" src="board.js"></script>
+<script type="text/javascript" src="rules.js"></script>
+
+
+<script type="text/javascript">
+
+//This script extracts parameters from the URL
+//from jquery-howto.blogspot.com
+
+    $.extend({
+        getUrlVars : function() {
+            var vars = [], hash;
+            var hashes = window.location.href.slice(
+                    window.location.href.indexOf('?') + 1).split('&');
+            for ( var i = 0; i < hashes.length; i++) {
+                hash = hashes[i].split('=');
+                vars.push(hash[0]);
+                vars[hash[0]] = hash[1];
+            }
+            return vars;
+        },
+        getUrlVar : function(name) {
+            return $.getUrlVars()[name];
+        }
+    });
+
+    var DEFAULT_BOARD_SIZE = 8;
+
+    //data model
+    var board;
+    var rules;
+    var whoseTurn = "black";    
+
+    var directionOf = function(color) {
+      if (color == "black") {
+        return -1;
+      }
+      return 1;
+    }
+
+    // Toggles the display for whose turn
+    // The color parameter should be either "black" or "red"
+    var toggleTurn = function(color) {
+       if (color==="black") {
+        $("#redTurn").hide();
+        $("#blackTurn").show();
+        whoseTurn = "red";
+       }
+       else {
+        $("#blackTurn").hide();
+        $("#redTurn").show();
+        whoseTurn = "black";
+       }
+    }
+
+
+
+    // This allows the Javascript code inside this block to only run when the page
+    // has finished loading in the browser.
+    $(document).ready(function() {
+
+        if ($.getUrlVar('size') && $.getUrlVar('size') >= 6) {
+            board = new Board($.getUrlVar('size'));
+        } else {
+            board = new Board(DEFAULT_BOARD_SIZE);
+        }
+
+
+    rules = new Rules(board);
+
+        // Draws an arrow from the origin cell to destination cell
+        var drawArrow = function (fromRow, fromCol, toRow, toCol) {
+            var canvas = document.getElementById("boardCanvas");
+            var context = canvas.getContext('2d');
+            var angle = Math.atan2(toCol - fromCol, toRow-fromRow);
+            var tip = 5;
+            var deg = Math.PI/6
+
+            context.clearRect(0,0,canvas.width,canvas.height);
+
+            context.beginPath();
+            context.moveTo(fromRow,fromCol);
+            context.lineTo(toRow,toCol);
+            context.lineTo(toRow - tip*Math.cos(angle-deg),toCol - tip*Math.sin(angle-deg));
+            context.moveTo(toRow,toCol);
+            context.lineTo(toRow - tip*Math.cos(angle-deg),toCol - tip*Math.sin(angle-deg));
+            context.closePath();
+            context.strokeStyle = "yellow";
+            context.lineWidth = 2;
+            context.stroke();
+
+        }
+
+        board.addEventListener('add',function (e) {
+            var column = e.details.col;
+            var row = e.details.row;
+            var checker = e.details.checker;
+            var color = e.details.checker.color;
+            var isKing = e.details.checker.isKing;
+            if (color==="red"){
+                if (isKing) {            
+                    $("#checkerboard tr:eq("+row+") td:eq("+column+")").empty().append("<div class='piece'><img src='graphics/red-king.png'/></div>");
+                }
+                else {
+                     $("#checkerboard tr:eq("+row+") td:eq("+column+")").empty().append("<div class='piece'><img src='graphics/red-piece.png'/></div>");
+                }
+            }
+            else {
+                $("#checkerboard tr:eq("+row+") td:eq("+column+")").empty().append("");
+            if (isKing) {            
+                    $("#checkerboard tr:eq("+row+") td:eq("+column+")").empty().append("<div class='piece'><img src='graphics/black-king.png'/></div>");
+                }
+                else {
+                     $("#checkerboard tr:eq("+row+") td:eq("+column+")").empty().append("<div class='piece'><img src='graphics/black-piece.png'/></div>");
+                }            }
+
+
+        },true);
+
+        board.addEventListener('move',function (e) {
+            var color = e.details.checker.color;
+            var isKing = e.details.checker.isKing;
+           
+            //Updates board by "moving" checkers
+            if (color==="red"){
+            $("#checkerboard tr:eq("+e.details.fromRow+") td:eq("+e.details.fromCol+")").empty().append("");
+                if (isKing) {            
+                    $("#checkerboard tr:eq("+e.details.toRow+") td:eq("+e.details.toCol+")").empty().append("<div class='piece'><img src='graphics/red-king.png'/></div>");
+                }
+                else {
+                     $("#checkerboard tr:eq("+e.details.toRow+") td:eq("+e.details.toCol+")").empty().append("<div class='piece'><img src='graphics/red-piece.png'/></div>");
+                }
+            }
+            else {
+                $("#checkerboard tr:eq("+e.details.fromRow+") td:eq("+e.details.fromCol+")").empty().append("");
+            if (isKing) {            
+                    $("#checkerboard tr:eq("+e.details.toRow+") td:eq("+e.details.toCol+")").empty().append("<div class='piece'><img src='graphics/black-king.png'/></div>");
+                }
+                else {
+                     $("#checkerboard tr:eq("+e.details.toRow+") td:eq("+e.details.toCol+")").empty().append("<div class='piece'><img src='graphics/black-piece.png'/></div>");
+                }            }
+
+            //Draws arrow on move
+            drawArrow((e.details.fromCol + 0.5) * dimension, (e.details.fromRow + 0.5) * dimension,
+                  (e.details.toCol + 0.5) * dimension, (e.details.toRow + 0.5) * dimension);
+
+        },true);
+
+        board.addEventListener('remove', function(e) {
+            var column = e.details.col;
+            var row = e.details.row;
+            $("#checkerboard tr:eq("+row+") td:eq("+column+")").empty().append("");
+        }, true);
+
+        board.addEventListener('promote',function (e) {
+            var column = e.details.col;
+            var row = e.details.row;
+            var checker = e.details.checker;
+
+            if (checker.color==="red"){
+                $("#checkerboard tr:eq("+row+") td:eq("+column+")").empty().append("<div class='piece'><img src='graphics/red-king.png'/></div>")
+            }
+            else {
+                $("#checkerboard tr:eq("+row+") td:eq("+column+")").empty().append("<div class='piece'><img src='graphics/black-king.png'/></div>")
+            }
+        
+        },true);
+
+        
+        $("#btnNewGame").click(function(evt) {
+            board.prepareNewGame();
+            var canvas = document.getElementById("boardCanvas");
+            var context = canvas.getContext('2d');
+
+            context.clearRect(0,0,canvas.width,canvas.height);
+            toggleTurn("black");
+        });
+
+        $("#btnAutoMove").click(function(evt) {
+          var playerColor = whoseTurn;
+          var playerDirection = directionOf(playerColor);
+          var result = rules.makeRandomMove(playerColor, playerDirection);
+          if (result != null) {
+            toggleTurn(whoseTurn);
+          }
+        });
+
+        board.prepareNewGame();
+
+// Creates variable size checkerboard
+    
+    function newCheckerboard(boardSize){
+
+        // Create board
+        var newRow = $("<tr/>");
+        var cols;
+
+        for (j=0; j<boardSize; j++) {
+            cols += "<td id='cell'>&nbsp;</td>";
+        }
+
+        for (i=0; i<boardSize;i++){
+            newRow.append(cols);
+            $("#checkerboard").append(newRow);
+            newRow = $("<tr/>");
+        }
+
+        //Dynamically changes board cell size
+        dimension = 400/boardSize;
+        $("#checkerboard td").css("height",dimension);
+        $("#checkerboard td").css("width",dimension);
+        
+
+        //Adds checkers to board
+        $('#checkerboard tr:nth-child(1) td:nth-child(even)').empty().append("<div class='piece'><img src='graphics/red-piece.png' id='checker'/></div>");
+        $('#checkerboard tr:nth-child(2) td:nth-child(odd)').empty().append("<div class='piece'><img src='graphics/red-piece.png' id='checker'/></div>");
+
+        $('#checkerboard tr:nth-last-child(2) td:nth-child(even)').empty().append("<div class='piece'><img src='graphics/black-piece.png' id='checker'/></div>");
+        $('#checkerboard tr:last td:nth-child(odd)').empty().append("<div class='piece'><img src='graphics/black-piece.png' id='checker'/></div>");
+
+
+    }
+
+    newCheckerboard(board.boardSize);
+    
+    });
+
+
+
+</script>
+
+
+</head>
+
+<body>
+
+<table id="mainTable">
+    <tr>
+        <td id="navigation">
+          <table>
+              <tr><td><div id = "playerTurn">
+                <div id="blackTurn">Black Turn</div>
+                <div id="redTurn">Red Turn</div>
+
+
+              </div></td></tr>
+              <tr><td><input id="btnNewGame" type="button" name="new" value="New Game"/></td></tr>
+              <tr><td><input id="btnAutoMove" type="button" name="new" value="Auto Move"/></td></tr>
+              <tr><td><input id="btnUndo" type="button" name="new" value="Undo"/></td></tr>
+              <tr><td><input id="btnRedo" type="button" name="new" value="Redo"/></td></tr>
+
+            </table>
+        </td>
+
+        <td id="content">
+
+                <table id="checkerboard" cellspacing="0" cellpadding="0">
+            <canvas id="boardCanvas" width="400" height="400"/>
+                </table>
+            </canvas>
+        </td>
+    </tr>
+
+   </table>
+
+<script type="text/javascript" src="input.js"></script>
+
+</body>
+
+
+
+</html>
